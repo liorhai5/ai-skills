@@ -1,0 +1,7 @@
+.DS_Store
+.ai/
+.codex/
+.cursor/
+.gemini/
+.claude/
+.mcp.json
