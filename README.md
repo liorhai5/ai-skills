@@ -9,6 +9,7 @@ A collection of [SKILL.md](https://github.com/anthropics/skills) skills for any 
 | [search-skill](skills/search-skill/) | Find, rate, refactor, or synthesize SKILL.md skills across GitHub and skill marketplaces |
 | [optimize-skill](skills/optimize-skill/) | Optimize prompts, SKILL.md files, and AGENTS.md files — strengthen weak instructions into enforceable agent protocols |
 | [research-codebase](skills/research-codebase/) | Investigate a codebase with system awareness — boundaries, control flows, blast radius, file:line citations |
+| [md2html](skills/md2html/) | Convert a markdown file to self-contained HTML and open it in the browser for clean copy-paste into Google Docs (local images inlined). Ships a bundled `scripts/md2html.mjs`; requires Node ≥ 18 |
 
 ## Install
 
@@ -22,7 +23,7 @@ npx skills add https://github.com/liorhai5/ai-skills --skill <skill-name>
 npx skills add /path/to/ai-skills --skill <skill-name>
 ```
 
-Where `<skill-name>` is `search-skill`, `optimize-skill`, or `research-codebase`.
+Where `<skill-name>` is `search-skill`, `optimize-skill`, `research-codebase`, or `md2html`.
 
 To target a specific agent (or install into multiple), pass `--agent <agent>` (`claude`, `cursor`, `codex`, `opencode`, …). See `npx skills add --help`.
 
@@ -44,7 +45,8 @@ ai-skills/
 └── skills/
     ├── search-skill/
     ├── optimize-skill/
-    └── research-codebase/
+    ├── research-codebase/
+    └── md2html/             # ships a bundled scripts/md2html.mjs (run `npm run build` to rebuild)
 ```
 
 ## For agent runtimes
