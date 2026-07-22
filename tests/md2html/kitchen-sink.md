@@ -32,7 +32,7 @@ This paragraph has **bold**, *italic*, ***bold italic***, ~~strikethrough~~, and
 
 - [x] Implement conversion
 - [x] Inline local images
-- [ ] Render diagrams (deferred to v2)
+- [x] Render diagrams (mermaid + SVG)
 
 ## Table
 
@@ -69,11 +69,30 @@ Markdown supports footnotes[^1] for citations.
 
 [^1]: This is the footnote text.
 
-## Mermaid (expected: stays a code block in v1)
+## Local SVG (expected: rasterized to PNG when rsvg-convert is present)
+
+![Sample SVG mockup](./assets/sample.svg)
+
+## Mermaid (expected: rendered to a PNG when a renderer is present)
 
 ```mermaid
 graph TD
   A[Markdown] --> B[md2html]
   B --> C[HTML]
   C --> D[Google Docs]
+```
+
+## Broken mermaid (expected: stays a code block, warning on stderr)
+
+```mermaid
+graph TD
+  A[ -->
+```
+
+## PlantUML (control: always stays a code block)
+
+```plantuml
+@startuml
+Alice -> Bob: hello
+@enduml
 ```
