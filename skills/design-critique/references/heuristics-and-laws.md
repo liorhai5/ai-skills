@@ -1,5 +1,10 @@
 # Heuristics and UX Laws: Detailed Reference
 
+> Part 1 restates the **10 Usability Heuristics for User Interface Design** by
+> Jakob Nielsen (Nielsen Norman Group, 1994; revised 2020) in original wording,
+> with commentary and checklists written for this skill. The laws in later parts
+> are likewise widely published; see each section for its originator.
+
 ## Part 1: Nielsen's 10 Heuristics — Expanded
 
 ### H1: Visibility of System Status
