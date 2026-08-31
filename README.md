@@ -10,7 +10,7 @@ A collection of [SKILL.md](https://github.com/anthropics/skills) skills for any 
 | [optimize-skill](skills/optimize-skill/) | Optimize prompts, SKILL.md files, and AGENTS.md files — strengthen weak instructions into enforceable agent protocols |
 | [research-codebase](skills/research-codebase/) | Investigate a codebase with system awareness — boundaries, control flows, blast radius, file:line citations |
 | [design-critique](skills/design-critique/) | Review a UX spec, mockups, or UI for usability, case & state coverage, and completeness — heuristics/UX-laws/IA grounded, writes a verdict-first report |
-| [md2html](skills/md2html/) | Convert a markdown file to self-contained HTML and open it in the browser for clean copy-paste into Google Docs — images inlined, mermaid fences and local SVGs rendered to PNG. A single dependency-free script (Node ≥ 18): every capability uses tools detected on your machine (pandoc / mmdc / rsvg-convert, …) and suggests installs when missing — nothing bundled |
+| [md2html](skills/md2html/) | Convert a markdown file to self-contained HTML and open it in the browser for clean copy-paste into Google Docs — local images inlined as base64, mermaid fences and local SVGs rendered to PNG (remote image URLs are left as references; auto-open is macOS-only). A single dependency-free script (Node ≥ 18): every capability uses tools detected on your machine (pandoc / mmdc / rsvg-convert, …) and suggests installs when missing — nothing bundled |
 
 ## Install
 
@@ -55,3 +55,11 @@ ai-skills/
 ## For agent runtimes
 
 See [AGENTS.md](AGENTS.md) — the entry point that agentskills-compatible runtimes discover automatically.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Licence
+
+[MIT](LICENSE) © Lior Hai
