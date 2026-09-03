@@ -1,0 +1,2 @@
+:root { --brand-primary: #6d28d9; --surface-bg: #fbfbfd; --text: #1a1a1a; }
+body { background: var(--surface-bg); color: var(--text); }
