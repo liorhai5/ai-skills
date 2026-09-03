@@ -1,0 +1,1 @@
+{ "name": "orbit-notes", "description": "Fast offline notes that sync when you reconnect.", "devDependencies": { "vite": "^5" } }
