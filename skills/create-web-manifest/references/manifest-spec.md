@@ -35,7 +35,7 @@ surfaces must be satisfied; neither is a superset of the other.
 | `icons` | See below. |
 | `screenshots` | Unlocks Chrome's rich install dialog. Needs `sizes`, `type`, and `form_factor` (`wide` = desktop, `narrow` = mobile). Supply at least one of each. |
 | `categories` | Store/launcher grouping, e.g. `["productivity","utilities"]`. Lowercase. |
-| `lang` / `dir` | BCP-47 tag and `ltr`/`rtl`. Affects how `name` renders in the launcher. |
+| `lang` / `dir` | BCP-47 tag and `ltr`/`rtl`. Affects how `name` renders in the launcher. Both are read from the `<html>` element when not given explicitly — a right-to-left document whose manifest claims `ltr` will render its own name wrongly in the launcher. |
 | `launch_handler` | `client_mode: "navigate-existing"` focuses the open window instead of spawning another. |
 | `shortcuts` | Long-press / right-click jump list. Each needs `name`, `url`, and its own `icons`. |
 
@@ -93,6 +93,22 @@ do not pre-round the corners.
   most crawlers. 1200×630 is the safe size across Facebook, LinkedIn, WhatsApp and
   Slack. `twitter:card` should be `summary_large_image` only when a real wide image
   exists — otherwise `summary`.
+
+## Serving from a subdirectory
+
+An app at `example.com/my-app/` cannot use root-absolute asset paths: `/icon-192.png`
+resolves against `example.com`, not the app, so the icons either 404 or silently resolve to
+whatever sits at the domain root. Two workable forms:
+
+- **Relative** — `./icon-192.png`. Manifest `src` values resolve against the manifest's own
+  URL, and `<head>` hrefs against the document, so the app works at any mount point and
+  moving it needs no change. Preferred.
+- **Absolute subpath** — `/my-app/icon-192.png`. Explicit, but wrong the moment the app
+  moves.
+
+`start_url`, `scope` and `id` are the exception: they must stay real absolute paths
+(`/my-app/`), because scope is matched as a URL prefix and a relative value would not
+constrain anything.
 
 ## Verifying by hand
 
