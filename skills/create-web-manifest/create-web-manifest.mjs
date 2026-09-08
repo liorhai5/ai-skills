@@ -44,7 +44,12 @@ const HELP = `create-web-manifest <project-dir> [source-image] [options]
   --start-url <url>      Default "/"            --scope <url>        Default "/"
   --display <mode>       Default "standalone"   --orientation <mode>
   --id <str>             Stable identity, default = start-url
-  --lang <code>          Default "en"           --site-url <url>     For canonical + og:url
+  --lang <code>          Default: <html lang>, else "en"
+  --dir <ltr|rtl>        Default: <html dir>, else "ltr"
+  --base <path>          Prefix for asset paths. Default: derived from the static dir,
+                         which assumes it is served at the domain root. Use "./" for
+                         relative (works at any mount point) or "/sub/" for a subpath.
+  --site-url <url>       For canonical, og:url and an absolute og:image
   --og                   Also render a 1200x630 og-image.png
   --no-head              Write assets + manifest, leave HTML untouched
   --dry-run              Print the plan, write nothing
@@ -172,12 +177,18 @@ function gatherIdentity(root, proj) {
   const existing = findManifest(proj.staticDir);
   const g = (rx, s) => { const m = s && s.match(rx); return m ? m[1].trim() : null; };
 
+  // The document already states its language and direction; reading them beats defaulting.
+  const htmlTag = html ? (html.match(/<html\b[^>]*>/i) || [""])[0] : "";
+  const htmlLang = g(/\blang\s*=\s*["']([^"']+)["']/i, htmlTag);
+  const htmlDir = (g(/\bdir\s*=\s*["']([^"']+)["']/i, htmlTag) || "").toLowerCase();
+
   const title = html ? g(/<title[^>]*>([\s\S]*?)<\/title>/i, html) : null;
   const metaDesc = html ? g(/<meta\s+name=["']description["']\s+content=["']([^"']*)["']/i, html) : null;
   const metaTheme = html ? g(/<meta\s+name=["']theme-color["'][^>]*content=["']([^"']*)["']/i, html) : null;
 
   return {
     pkg, html, htmlPath: proj.html, existing,
+    htmlLang, htmlDir: ["ltr", "rtl", "auto"].includes(htmlDir) ? htmlDir : null,
     title, titleIsScaffold: isScaffold(title),
     description: (existing?.json.description) || metaDesc || pkg.description || null,
     name: (existing?.json.name) || (!isScaffold(title) ? title : null) || (pkg.name ? titleCase(pkg.name) : null)
@@ -397,7 +408,7 @@ function buildManifest(plan, present) {
     short_name: plan.shortName,
     description: plan.description,
     lang: plan.lang,
-    dir: "ltr",
+    dir: plan.dir,
     start_url: plan.startUrl,
     scope: plan.scope,
     display: plan.display,
@@ -457,7 +468,9 @@ function buildHead(plan, present, manifestName) {
   if (plan.siteUrl) prop("og:url", plan.siteUrl);
   const ogImg = present.has(ASSETS.og) ? ASSETS.og : (present.has(ASSETS.any512) ? ASSETS.any512 : null);
   if (ogImg) {
-    const abs = plan.siteUrl ? plan.siteUrl.replace(/\/$/, "") + h(ogImg) : h(ogImg);
+    // Built from siteUrl + filename, not from the href: with a relative base the href
+    // begins "./" and concatenation would yield ".../twist-and-spin./og-image.png".
+    const abs = plan.siteUrl ? plan.siteUrl.replace(/\/+$/, "") + "/" + ogImg : h(ogImg);
     prop("og:image", abs);
     meta("twitter:card", `content="${ogImg === ASSETS.og ? "summary_large_image" : "summary"}"`);
     meta("twitter:image", `content="${esc(abs)}"`);
@@ -513,7 +526,7 @@ function injectHead(html, block, managed) {
 // hand-written manifests make: icons that 404, sizes that lie, and one file
 // serving as both `any` and `maskable`.
 
-function verify(root, proj, manifestName, flattened = new Set()) {
+function verify(root, proj, manifestName, flattened = new Set(), hbase = null) {
   const errors = [], warns = [], notes = [];
   const E = (m) => errors.push(m), W = (m) => warns.push(m), N = (m) => notes.push(m);
   const mp = path.join(proj.staticDir, manifestName);
@@ -538,14 +551,10 @@ function verify(root, proj, manifestName, flattened = new Set()) {
 
   const icons = Array.isArray(m.icons) ? m.icons : [];
   if (!icons.length) E("manifest.icons is empty");
-  // Map a served URL back to a file. The base is whatever this project's static dir serves as,
-  // so an Angular /assets/ prefix is stripped while a plain project keeping icons in /assets/ is not.
-  const base = hrefBase(root, proj.staticDir).replace(/^\/+/, "");
-  const toFile = (src) => {
-    let p = String(src).replace(/^https?:\/\/[^/]+/, "").replace(/^\/+/, "");
-    if (base && p.startsWith(base)) p = p.slice(base.length);
-    return path.join(proj.staticDir, p);
-  };
+  // Map a served URL back to a file under whichever base this run used. Falls back to the
+  // derived base so --verify-only still resolves a manifest written with the default.
+  const base = hbase || hrefBase(root, proj.staticDir);
+  const toFile = (src) => path.join(proj.staticDir, stripBase(src, base));
   const purposes = (ic) => String(ic.purpose || "any").trim().split(/\s+/);
   const anySrcs = new Set(), maskSrcs = new Set();
 
@@ -603,8 +612,8 @@ function verify(root, proj, manifestName, flattened = new Set()) {
     for (const [rx, label] of need) if (!rx.test(html)) W(`${label} missing from ${path.relative(root, proj.html)}`);
     const t = (html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1];
     if (isScaffold(t)) E(`<title>${t || ""}</title> is still a scaffold placeholder`);
-    for (const mm of html.matchAll(/(?:href|content)=["'](\/[^"']+\.(?:png|svg|ico|webmanifest|json))["']/gi)) {
-      const f = path.join(proj.staticDir, mm[1].replace(/^\/+/, "").replace(/^assets\//, ""));
+    for (const mm of html.matchAll(/(?:href|content)=["']((?:\.\/|\/)[^"':]+\.(?:png|svg|ico|webmanifest|json))["']/gi)) {
+      const f = path.join(proj.staticDir, stripBase(mm[1], base));
       if (!fs.existsSync(f)) W(`<head> references ${mm[1]} but no such file on disk`);
     }
   } else N("no HTML entry point found — <head> tags were not checked");
@@ -616,9 +625,31 @@ function verify(root, proj, manifestName, flattened = new Set()) {
 
 function hrefBase(root, staticDir) {
   const rel = (path.relative(root, staticDir) || ".").split(path.sep).join("/");
-  if (["." , "public", "static", "www"].includes(rel)) return "/";
+  if ([".", "public", "static", "www"].includes(rel)) return "/";
   if (rel === "src/assets") return "/assets/";
   return "/" + rel + "/";
+}
+
+/**
+ * The prefix every asset path gets. The derived default assumes the static dir is served
+ * at the domain root, which is wrong for any app mounted in a subdirectory — hence the
+ * override. "./" is mount-point independent and the safest choice for a subpath app.
+ */
+function resolveBase(root, staticDir, override) {
+  if (override === undefined || override === null || override === "") return hrefBase(root, staticDir);
+  let b = String(override);
+  if (b === "." || b === "./") return "./";
+  if (!b.endsWith("/")) b += "/";
+  return b;
+}
+
+/** Strip whichever base a path carries, so a file can be located under any of them. */
+function stripBase(src, base) {
+  let p = String(src).replace(/^https?:\/\/[^/]+/, "");
+  p = p.replace(/^\.\//, "").replace(/^\/+/, "");
+  const b = String(base).replace(/^\.\//, "").replace(/^\/+/, "");
+  if (b && p.startsWith(b)) p = p.slice(b.length);
+  return p;
 }
 
 const SRC_DIRS = [".", "public", "static", "branding", "brand", "assets", "src/assets", "src", "www"];
@@ -675,7 +706,7 @@ function main() {
   out(`html entry   ${proj.html ? path.relative(root, proj.html) : "(none — head snippet will be printed)"}`);
 
   if (flags["verify-only"]) {
-    const v = verify(root, proj, manifestName);
+    const v = verify(root, proj, manifestName, new Set(), resolveBase(root, proj.staticDir, flags.base));
     report(v);
     return v.errors.length ? 1 : 0;
   }
@@ -706,11 +737,14 @@ function main() {
   const shortName = flags["short-name"] || ident.shortName ||
     (name.length <= 12 ? name : name.split(/\s+/)[0].slice(0, 12));
   const startUrl = flags["start-url"] || "/";
-  const href = (f) => hrefBase(root, proj.staticDir) + f;
+  const hbase = resolveBase(root, proj.staticDir, flags.base);
+  const href = (f) => hbase + f;
 
   const plan = {
     name, shortName, description: flags.description || ident.description || null,
-    lang: flags.lang || "en", id: flags.id || startUrl, startUrl,
+    lang: flags.lang || ident.htmlLang || "en",
+    dir: flags.dir || ident.htmlDir || "ltr",
+    id: flags.id || startUrl, startUrl,
     scope: flags.scope || "/", display: flags.display || "standalone",
     orientation: flags.orientation || null, themeColor: theme,
     themeColorDark: norm6(flags["theme-color-dark"]) || theme, bgColor: bg,
@@ -863,7 +897,7 @@ function main() {
 
   out("");
   out(`wrote ${[...generated].length} asset(s) + ${manifestName}`);
-  const v = verify(root, proj, manifestName, flattened);
+  const v = verify(root, proj, manifestName, flattened, hbase);
   report(v);
   flush();
   return v.errors.length ? 1 : 0;

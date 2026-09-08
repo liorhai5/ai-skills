@@ -124,3 +124,51 @@ A second run must not overwrite it — the backup is the original, not the previ
 A run must not destroy `<head>` tags it does not re-emit. Seed a file with `rel="canonical"`,
 `og:locale`, `og:image:width` and `twitter:site`, run **without** `--site-url`, and all four must
 survive. Before the 2026-09-03 fix, all four were deleted and none restored.
+
+## `subpath/` — an app not served at the domain root
+
+Default asset paths assume the domain root. This fixture proves the `--base` override, and
+that the verify pass resolves icons under it.
+
+```sh
+S=../../skills/create-web-manifest/create-web-manifest.mjs
+node $S subpath --name "Subpath App" --short-name "Subpath" \
+  --start-url /my-app/ --scope /my-app/ \
+  --site-url https://example.com/my-app/ --base ./ --og
+```
+
+Expected:
+
+1. Every `icons[].src` in `public/site.webmanifest` begins `./`, and every local `href` in
+   the managed head block begins `./`.
+2. `start_url`, `scope` and `id` remain `/my-app/` — they must stay real absolute paths,
+   because scope is matched as a URL prefix.
+3. **`og:image` is `https://example.com/my-app/og-image.png`** — a clean absolute URL. The
+   bug this guards is `https://example.com/my-app./og-image.png`, which is what naive
+   concatenation of `siteUrl` and a `./` href produces.
+4. `node $S subpath --verify-only --base ./` reports `all checks passed`.
+5. Repeat with `--base /my-app/`: paths become `/my-app/icon-192.png`, and
+   `--verify-only --base /my-app/` still passes.
+
+## `rtl/` — a right-to-left document
+
+`<html lang="he" dir="rtl">`, and **no language or direction flags**.
+
+```sh
+node ../../skills/create-web-manifest/create-web-manifest.mjs rtl --name "RTL App" --short-name "RTL"
+```
+
+Expected: `public/site.webmanifest` contains `"lang": "he"` and `"dir": "rtl"`, read off the
+`<html>` element. Adding `--dir ltr --lang en` must override both — the document is the
+default, not the authority.
+
+## Default-path regression
+
+The most important check when touching base or direction handling: **with no new flags, output
+must be byte-identical to the previous version.** Generate with both, then `diff -r`.
+
+```sh
+git show master:skills/create-web-manifest/create-web-manifest.mjs > /tmp/old.mjs
+# run each against identical copies of a fixture, then:
+diff -r --brief /tmp/runA /tmp/runB
+```

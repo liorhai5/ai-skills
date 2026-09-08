@@ -27,6 +27,16 @@ Useful flags: `--source <file>` · `--name` · `--short-name` · `--description`
 1200×630 share image) · `--no-head` (assets only) · `--verify-only` (audit, change
 nothing — exits non-zero on failures, so it works in CI).
 
+**`--base` — required for any app not served at the domain root.** Asset paths default to
+the domain root, so an app at `example.com/my-app/` would emit `/icon-192.png` and resolve
+it against `example.com`, silently picking up whatever lives there instead. Pass
+`--base ./` for relative paths, which work at any mount point, or `--base /my-app/` to
+hard-code the subpath. `--verify-only` takes the same flag, so an audit resolves the icons
+the way the manifest actually names them.
+
+`--lang` and `--dir` are read from the `<html>` element when not passed, so an
+`<html lang="he" dir="rtl">` document produces an RTL manifest without being told.
+
 ## How it works — env tools, never bundled libraries
 
 Rasterising is the only step that needs anything installed. Manifest, `<head>`,
