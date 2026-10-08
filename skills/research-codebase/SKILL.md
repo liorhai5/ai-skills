@@ -6,7 +6,7 @@ argument-hint: "<question or scope — e.g., 'how does auth work in /api', 'what
 
 # research-codebase
 
-Understand a codebase by reading its boundaries, contracts, flows, and blast radius before recommending any action. Single-file reading is the most common failure mode of codebase investigation — this skill refuses it.
+Understand a codebase by reading its boundaries, contracts, flows, and blast radius before recommending any action. Do not infer system behavior or impact from a single-file view. A literal source fact may need only one exact file.
 
 ## Tools
 
@@ -15,9 +15,9 @@ Shell:    Bash — preferred when available:
   - `rg` (ripgrep) — fast structural search; respects `.gitignore`
   - `sg` (ast-grep) — AST pattern matching across languages
   - Static analyzers / dependency scanners configured in the host project (invoke via `npx` or the project's equivalent for its language)
-  - Plain `grep` / `find` as the floor — degrade confidence labels accordingly
+  - Plain `grep` / `find` as the floor — name the checks these tools cannot establish
 
-LSP-backed navigation (definitions, references) is an editor concern, not a shell concern. The skill works without it; confidence labels downgrade from `confirmed` to `likely` when LSP is unavailable.
+LSP-backed navigation (definitions, references) is an editor concern, not a shell concern. Confidence depends on evidence for the claim, not tool availability alone. Missing LSP matters when the remaining evidence cannot establish symbol identity or reachability.
 
 ## Operating Model
 
@@ -25,13 +25,13 @@ LSP-backed navigation (definitions, references) is an editor concern, not a shel
 SCOPE → INVENTORY → INVESTIGATE → CITE → SYNTHESIZE → REPORT
 ```
 
-Compress when the user's scope is narrow (e.g., one specific function). Expand when investigating across modules, across packages, or across system boundaries.
+Compress when the user's scope is narrow (e.g., one specific function). Keep `INDEX.md`, at least one numbered shard and `understanding.md` even for literal lookups. Expand when investigating across modules, across packages, or across system boundaries. Follow the phase order for tool calls, not just report headings; do not gather evidence first and backfill phase files afterward.
 
 ## Hard Rules
 
 - **Every claim cites `file:line`** — code claims need file path + line number; structural claims need a file path; behavioral claims need command output (test result, build log, runtime trace). No uncited assertions.
-- **Confidence labels are explicit** — every architecture-level claim is `confirmed` (from inspected code), `likely` (from strong indirect signal), or `uncertain` (acknowledged gap). Never present uncertain claims as confirmed.
-- **If the output only explains one file, the investigation is incomplete** — boundaries live between files, not inside them. Go wider.
+- **Confidence labels are explicit** — every architecture-level claim is `confirmed` (sufficient inspected evidence), `likely` (indirect or incomplete proof), or `uncertain` (a material gap or surviving contradiction). Never present uncertain claims as confirmed.
+- **Match breadth to the claim** — literal source facts can stop at sufficient exact evidence. System, flow, behavior and impact conclusions require relevant boundaries and consumers; go wider before making them.
 - **Hard gates** before recommending any change that:
   - Touches public contracts (types, schemas, wire protocols affecting external consumers)
   - Crosses architecture layers (UI calling DB directly, service reaching into UI, etc.)
@@ -58,7 +58,7 @@ Extract before reading code:
 
 Ask one focused clarifying question only when the answer materially changes scope or depth. Otherwise proceed with stated assumptions.
 
-Write the scope as the first section of `INDEX.md` inside a new numbered folder at `.ai/codebase-research/<NNN>-<topic>/` (find the next available `NNN` by scanning the directory; derive a short kebab-case `<topic>` from the user's question). The folder is the investigation's anchor; `INDEX.md` is its manifest.
+Before the first code read, write the scope as the first section of `INDEX.md` inside a new numbered folder at `.ai/codebase-research/<NNN>-<topic>/` (find the next available `NNN` by scanning the directory; derive a short kebab-case `<topic>` from the user's question). The folder is the investigation's anchor; `INDEX.md` is its manifest.
 
 ## Phase 2: Inventory
 
@@ -69,7 +69,7 @@ Map the surface area before diving in.
 - Identify ownership signals: `CODEOWNERS`, module READMEs, package authors, commit-author concentration
 - Note language-server / AST / scanner tool availability for the codebase
 
-Write inventory findings to a numbered shard inside the investigation folder, e.g. `.ai/codebase-research/<NNN>-<topic>/01-inventory.md`. Update `INDEX.md` with a one-line summary and a link to the shard.
+Write inventory findings to a numbered shard inside the investigation folder, e.g. `.ai/codebase-research/<NNN>-<topic>/01-inventory.md`, then update `INDEX.md` with a one-line summary and a link to the shard. Finish these writes before tracing flows, evaluating callers or diagnosing a cause.
 
 ## Phase 3: Investigate
 
@@ -86,7 +86,11 @@ Read code to answer the scoped question. Investigation moves through these surfa
 | **Architecture health** | One line per principle and per dimension; confidence-labeled | aggregated from above; cite per claim |
 | **Clean-code hotspots** | Top static-analyzer findings worth fixing | static-analyzer output from project's configured tools → `file:line` |
 
-For each surface inspected, write findings to a numbered shard in `.ai/codebase-research/<NNN>-<topic>/`, e.g. `02-control-flows.md`, `03-data-flows.md`, `04-boundaries.md`. After writing each shard, update `INDEX.md` with the shard link and a one-line summary. Do NOT batch findings in memory across surfaces — write per surface so context compaction can't lose work.
+For a bug claim, identify actual behavior, the expected supported contract and evidence of its violation. Confirm root cause only with mechanism, trigger, first divergence and decisive causal evidence. Test and rule out credible competing explanations when present. If none is credible, record why and require direct causal/counterfactual proof; do not invent an alternate. Missing decisive evidence or a surviving explanation keeps the result a hypothesis with a named next check.
+
+An empty search establishes only what was searched. For absence, unused-code or safe-change claims, record scope, filters/exclusions, dynamic paths and relevant consumers/tests/configuration; corroborate with another relevant evidence angle. If coverage or corroboration is missing, report the bounded observation and gap. Lexical hits alone do not establish semantic identity or global absence.
+
+After each surface, write its findings to a numbered shard in `.ai/codebase-research/<NNN>-<topic>/`, e.g. `02-control-flows.md`, `03-data-flows.md`, `04-boundaries.md`, then update `INDEX.md` with the shard link and a one-line summary before investigating the next surface. Do NOT batch findings in memory across surfaces — write per surface so context compaction can't lose work.
 
 ## Phase 4: Cite
 
@@ -96,13 +100,13 @@ Verify before reporting:
 - Every confidence label is honestly assigned (`confirmed` / `likely` / `uncertain`)
 - Every gap is named (what you didn't inspect, and why it was out of scope)
 
-If any claim can't be cited, mark it `uncertain` and downgrade.
+If any claim can't be cited, mark it `uncertain` and downgrade. Check root-cause and search-coverage receipts before assigning confidence; a source snippet alone does not prove runtime causality or global absence.
 
 ## Phase 5: Synthesize
 
-Read the per-surface shard files (re-read from disk, not from memory). Build the understanding artifact.
+Before writing `understanding.md`, re-read each numbered shard from disk using an available read tool, then build the understanding artifact. Do not substitute remembered text or a previous Write result for this read, or claim a read that did not occur.
 
-Required sections (always present, even as "N/A + reason"):
+Required sections (always present, even as "N/A + reason"). For a literal lookup, keep entries short and apply self-checks only to relevant claims; do not infer an effective runtime value from a declared default when overrides may apply:
 
 | # | Section | Contents |
 |---|---|---|
@@ -177,11 +181,11 @@ Before reporting, verify the artifact answers all of:
 - **Documented assumptions** — what did the original author assume? Still true?
 - **Safest next move** — single concrete sentence
 
-If the artifact only explains one file's behavior, boundaries were missed. Go wider before reporting.
+For system, flow, behavior or impact conclusions, verify relevant boundaries and consumers before reporting. A literal source lookup can use one exact file; mark unrelated self-checks N/A with a reason.
 
 ## Recovery
 
-- **No language-server / AST / scanner available** — degrade to grep + careful reading; downgrade confidence labels accordingly (`likely` instead of `confirmed`)
+- **No language-server / AST / scanner available** — use grep + careful reading; assign confidence from the remaining evidence and name missing checks. Exact literal facts may still be confirmed.
 - **Scope too broad to inspect fully** — present the user with a narrower scope offer; ask for re-scope before investing further reading
 - **Conflicting evidence across files** — record both, mark `uncertain`, surface the conflict in the report — don't paper over it
 - **Hard gate triggered** — STOP, present the change profile, require explicit user approval before recommending; do not soft-pedal to bypass
@@ -191,7 +195,7 @@ If the artifact only explains one file's behavior, boundaries were missed. Go wi
 
 | # | Anti-pattern | Why it fails |
 |---|---|---|
-| 1 | Reading one file and concluding the system | Boundaries live between files; root causes do too |
+| 1 | Inferring the system from one file | Literal facts can be local; system and impact claims need relevant boundaries |
 | 2 | Reporting without citations | The user has to re-verify everything; the artifact has no audit trail |
 | 3 | Marking everything `confirmed` | Inflated confidence misleads decisions |
 | 4 | Recommending a change before mapping blast radius | Surprises in production |
