@@ -68,7 +68,7 @@ Each surface is provider-agnostic unless noted. Treat install counts and audit b
     -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:150.0) Gecko/20100101 Firefox/150.0'
   ```
   Response: `{"skills": [{"id": "owner/repo/skillId", "skillId": string, "name": string, "installs": number, "source": "owner/repo"}], "count": number}`
-  Sort results by `installs` descending; top entries are the most battle-tested candidates.
+  Sort results by `installs` descending to prioritize inspection; install counts alone do not prove task success.
   Do NOT use for org-specific or private searches — use `gh api` against private repos instead.
 
 ### `claude-plugins.dev` (Kamalnrf)
@@ -139,7 +139,7 @@ These tools combine discovery and install. Always run a safety scan on the sourc
 
 ## Quality Signals Beyond Stars
 
-- **Install count** (skills.sh leaderboard) — surfaces battle-tested skills the GitHub-stars view misses (e.g. `find-skills`, Lark/Feishu suite).
+- **Install count** (skills.sh leaderboard) — surfaces candidates the GitHub-stars view misses (e.g. `find-skills`, Lark/Feishu suite); inspect workflow/evidence before treating them as proven.
 - **Recency** — skip skills with no commits in the last 12 months unless the user explicitly wants archival.
 - **Audit badges** — skills.sh shows "Gen Agent Trust Hub" pass/fail; Microsoft uses Sensei scoring.
 - **`match_reasons` + `downloads_7d` + `days_since_update`** — fields exposed by aiskillstore.io for ranking.
