@@ -322,26 +322,160 @@ function inlineImages(html, inliner) {
 // ---------------------------------------------------------------------------
 // HTML template
 
-// Minimal, readable styling for browser viewing. Google Docs discards almost all
-// of this on paste — it's here so the intermediate HTML is pleasant to look at.
+// Reference document style for browser viewing and rich paste. Docs may approximate
+// individual properties; clipboard fidelity is verified separately from HTML.
+// Fonts resolve locally only. Missing Madefor faces fall back through CSS.
 const STYLE = `
-  body { max-width: 820px; margin: 2rem auto; padding: 0 1.25rem;
-    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    color: #1a1a1a; }
-  h1, h2, h3, h4, h5, h6 { line-height: 1.25; margin: 1.6em 0 0.6em; }
-  h1 { font-size: 1.9em; } h2 { font-size: 1.5em; } h3 { font-size: 1.25em; }
-  p { margin: 0.8em 0; }
-  a { color: #1155cc; }
-  img { max-width: 100%; height: auto; }
-  pre { background: #f6f8fa; padding: 0.9em 1em; overflow: auto; border-radius: 6px; }
-  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }
-  pre code { font-size: 0.85em; }
-  :not(pre) > code { background: #f0f0f0; padding: 0.1em 0.35em; border-radius: 4px; }
-  blockquote { margin: 0.8em 0; padding: 0 1em; color: #555; border-left: 3px solid #ddd; }
-  table { border-collapse: collapse; margin: 1em 0; }
-  th, td { border: 1px solid #ccc; padding: 0.4em 0.75em; text-align: left; }
-  th { background: #f6f8fa; }
-  ul, ol { padding-left: 1.5em; }
+  @font-face { font-family: "Wix Madefor Display"; font-style: normal; font-weight: 400;
+    src: local("WixMadeforDisplay-Regular"), local("Wix Madefor Display Regular"),
+      local("WixMadeforDisplayApp-Regular"), local("Wix Madefor Display App"); }
+  @font-face { font-family: "Wix Madefor Display"; font-style: normal; font-weight: 700;
+    src: local("WixMadeforDisplay-Bold"), local("Wix Madefor Display Bold"),
+      local("WixMadeforDisplayApp-Bold"), local("Wix Madefor Display App Bold"); }
+  @font-face { font-family: "Wix Madefor Text"; font-style: normal; font-weight: 400;
+    src: local("WixMadeforText-Regular"), local("Wix Madefor Text Regular"),
+      local("WixMadeforTextApp-Regular"), local("Wix Madefor Text App"); }
+  @font-face { font-family: "Wix Madefor Text"; font-style: normal; font-weight: 700;
+    src: local("WixMadeforText-Bold"), local("Wix Madefor Text Bold"),
+      local("WixMadeforTextApp-Bold"), local("Wix Madefor Text App Bold"); }
+  @font-face { font-family: "Wix Madefor Text"; font-style: italic; font-weight: 400;
+    src: local("WixMadeforText-Italic"), local("Wix Madefor Text Italic"),
+      local("WixMadeforTextApp-Italic"), local("Wix Madefor Text App Italic"); }
+  @font-face { font-family: "Wix Madefor Text"; font-style: italic; font-weight: 700;
+    src: local("WixMadeforText-BoldItalic"), local("Wix Madefor Text Bold Italic"),
+      local("WixMadeforTextApp-BoldItalic"), local("Wix Madefor Text App Bold Italic"); }
+  body { box-sizing: border-box; width: 100%; max-width: 819px; margin: 24pt auto;
+    padding: 0 24pt; background: #ffffff; color: #1a1a1a;
+    font: 400 12pt/1.15 "Wix Madefor Display", "Wix Madefor Text", Arial, sans-serif;
+    overflow-wrap: anywhere; }
+  h1, h2, h3, h4, h5, h6 { color: #20252b; font-weight: 700; line-height: 1.25; }
+  h1 { font-size: 18pt; font-weight: 400; margin: 21pt 0 8pt; }
+  h2 { font-size: 14pt; font-weight: 400; text-decoration: underline; margin: 10pt 0; }
+  h3 { font-size: 12pt; margin: 18pt 0 7pt; }
+  h4 { font-size: 12pt; font-style: italic; margin: 14pt 0 7pt; }
+  h5 { font-size: 11pt; font-style: italic; margin: 12pt 0 4pt; }
+  h6 { font-size: 11pt; font-weight: 400; font-style: italic; color: #4f5964;
+    margin: 12pt 0 4pt; }
+  body > h1:first-child { font-size: 26pt; font-weight: 400; margin: 0 0 10pt; }
+  p { margin: 10pt 0; }
+  a { color: #185abc; text-decoration: underline; }
+  img { display: block; max-width: 100%; height: auto; margin: 8pt 0; }
+  figure { margin: 12pt 0 16pt; }
+  caption, figcaption { color: #59616b; font-size: 9.5pt; text-align: left; }
+  caption { margin-bottom: 8pt; }
+  code { font: 10pt/1.5 "Courier New", monospace; }
+  :not(pre) > code { background: #edf0f3; padding: 1pt 3pt; }
+  pre { background: #f1f3f5; padding: 12pt; margin: 12pt 0 16pt;
+    white-space: pre-wrap; overflow-wrap: anywhere; }
+  pre code { display: block; background: transparent; padding: 0; }
+  blockquote { color: #4f5964; border-left: 2px solid #aab2bb;
+    margin: 12pt 0; padding: 8pt 12pt; }
+  blockquote > :last-child { margin-bottom: 0; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed;
+    margin: 12pt 0 16pt; background: #ffffff; font: inherit; }
+  th, td { border: 0.625px solid #cccccc; padding: 16pt 9pt;
+    background: #ffffff; color: #1a1a1a; font: inherit;
+    text-align: left; vertical-align: top; }
+  th { background: #f6f8fa; font-weight: 700; }
+  th p, td p { margin: 0; }
+  tfoot th, tfoot td { background: #ffffff; color: #252a30; font-weight: 700;
+    border-top: 1.5px solid #89939e; border-bottom: 0; }
+  ul, ol { margin: 8pt 0 12pt; padding-left: 20pt; }
+  li { margin-bottom: 4pt; }
+  ul ul, ul ol, ol ul, ol ol { margin: 4pt 0; }
+  hr { border: 0; height: 0; padding: 0; margin: 24pt 0; }
+  @media (max-width: 480px) {
+    body { padding: 0 12pt; }
+  }
+`;
+
+// Keep ordinary select-all/copy, with rich HTML independent of viewport sizing.
+// Only a full-document selection is handled; errors retain the browser's copy.
+const COPY_SCRIPT = String.raw`
+(() => {
+  const copyWidth = 755; // Matches the accepted pageless reference, independent of browser width.
+  const colors = { "✓": "#19643c", "⚠": "#8a6100", "✕": "#a12b2b" };
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const symbols = [];
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (/[✓⚠✕]/.test(node.data) && !node.parentElement.closest("pre,code,script,style")) symbols.push(node);
+  }
+  for (const node of symbols) {
+    const fragment = document.createDocumentFragment();
+    for (const part of node.data.split(/([✓⚠✕])/)) {
+      const text = document.createTextNode(part);
+      if (!colors[part]) { fragment.append(text); continue; }
+      const span = document.createElement("span");
+      span.style.color = colors[part];
+      span.append(text);
+      fragment.append(span);
+    }
+    node.replaceWith(fragment);
+  }
+
+  document.addEventListener("copy", (event) => {
+    const selection = document.getSelection();
+    const children = [...document.body.children].filter(el => !el.matches("script,style"));
+    const text = value => value.replace(/\s+/g, " ").trim();
+    if (!event.clipboardData || !selection || !children.length ||
+        !selection.containsNode(children[0], true) || !selection.containsNode(children.at(-1), true) ||
+        text(selection.toString()) !== text(document.body.innerText)) return;
+    try {
+      const copy = document.body.cloneNode(true);
+      const originals = [...document.body.querySelectorAll("*")];
+      const clones = [...copy.querySelectorAll("*")];
+      const properties = ["font-family", "font-size", "font-weight", "font-style", "color",
+        "background-color", "text-align", "text-decoration", "vertical-align", "white-space", "visibility",
+        "margin-top", "margin-bottom", "padding-top", "padding-right", "padding-bottom", "padding-left",
+        "border-top", "border-right", "border-bottom", "border-left"];
+      originals.forEach((original, i) => {
+        const clone = clones[i], style = getComputedStyle(original);
+        if (style.display === "none") { clone.remove(); return; }
+        if (style.visibility === "hidden" || style.visibility === "collapse") {
+          if (original.matches("img,input,textarea,select,canvas,video,audio,iframe,object,embed")) {
+            clone.remove();
+            return;
+          }
+          // Preserve table/list structure and visible descendants, excluding hidden text/comments.
+          for (const node of [...clone.childNodes]) {
+            if (node.nodeType !== Node.ELEMENT_NODE) node.remove();
+          }
+        }
+        for (const property of properties) clone.style.setProperty(property, style.getPropertyValue(property));
+        const leading = parseFloat(style.lineHeight) / parseFloat(style.fontSize);
+        clone.style.lineHeight = Number.isFinite(leading) ? String(leading) : "normal";
+        if (original.matches("table")) {
+          clone.setAttribute("width", String(copyWidth));
+          clone.style.width = copyWidth + "px";
+          clone.style.borderCollapse = "collapse";
+          clone.style.margin = "0";
+        }
+        if (original.matches("td,th,col,colgroup")) {
+          clone.removeAttribute("width");
+          clone.style.removeProperty("width");
+          clone.style.margin = "0";
+        }
+        if (original.matches("p") && original.closest("td,th")) clone.style.margin = "0";
+        if (original.matches("img") && original.naturalWidth && original.naturalHeight) {
+          const width = Math.min(original.naturalWidth, copyWidth);
+          const height = Math.round(original.naturalHeight * width / original.naturalWidth);
+          clone.setAttribute("width", String(width));
+          clone.setAttribute("height", String(height));
+          clone.style.width = width + "px";
+          clone.style.height = height + "px";
+          clone.style.removeProperty("max-width");
+        }
+      });
+      copy.querySelectorAll("script,style,link,meta").forEach(el => el.remove());
+      event.clipboardData.setData("text/html", copy.innerHTML);
+      event.clipboardData.setData("text/plain", selection.toString());
+      event.preventDefault();
+    } catch (error) {
+      console.warn("md2html: using native copy after formatting failed", error);
+    }
+  });
+})();
 `;
 
 function escapeHtml(text) {
@@ -359,6 +493,7 @@ function wrapDocument(bodyHtml, title) {
 </head>
 <body>
 ${bodyHtml}
+<script>${COPY_SCRIPT}</script>
 </body>
 </html>
 `;
