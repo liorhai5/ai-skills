@@ -6,24 +6,8 @@ description: Exercises every construct md2html supports.
 
 # Kitchen Sink
 
-A fixture that exercises every supported construct. Run `md2html tests/md2html/kitchen-sink.md`
+A fixture that exercises every supported construct. Run `md2html fixtures/kitchen-sink.md`
 and paste the result into a Google Doc to verify formatting survives.
-
-# Main section
-
-This later H1 is a section heading, while the leading H1 above is the document title.
-
-## Subsection
-
-### Topic
-
-#### Detail
-
-##### Supporting detail
-
-###### Reference detail
-
-Each level keeps its source heading level and has a distinct visual treatment.
 
 ## Text formatting
 
@@ -59,25 +43,9 @@ This paragraph has **bold**, *italic*, ***bold italic***, ~~strikethrough~~, and
 | Local images   | Yes                  | Inlined as base64           |
 | Code blocks    | Yes                  | Color highlighting may drop |
 
-### Authored status text
-
-These are illustrative cell values; the converter preserves their wording and symbols.
-
-| Area | Status | Context |
-|------|--------|---------|
-| Typography | ✓ Approved | Source text and symbols stay unchanged. |
-| Table spacing | ⚠ Review | A longer cell wraps across lines without reducing its font size or line spacing. |
-| Image placement | ✕ Blocked | The label is authored content, not a status inferred by the renderer. |
-
 ## Blockquote
 
 > The simplest solution that solves the problem wins.
-
-> **A note in ordinary Markdown:** No special labels or HTML classes are required.
-
----
-
-The source separator leaves whitespace without a divider line.
 
 ## Code block
 
